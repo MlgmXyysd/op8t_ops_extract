@@ -365,7 +365,7 @@ def main():
 
     with open(os.path.join(path, "manifest.xml"), 'w') as wf:
         wf.write(xml)
-    return
+
     root = ET.fromstring(xml)
     for child in root:
         if child.tag.upper() in ["SAHARA", "UFS_PROVISION"]:
