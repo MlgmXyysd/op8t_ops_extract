@@ -321,17 +321,33 @@ def extract_xml(filename):
             return 0, ""
 
 
-def extract_file(ops_filename, out_path, out_file_name, offset, length, align=0x1000):
+def extract_file(ops_filename, out_path, out_file_name, offset, length, align=0x1000, decrypt_block=0):
     with open(ops_filename, 'rb') as rf:
         with open(os.path.join(out_path, out_file_name), 'wb') as wf:
             rf.seek(offset)
             data = rf.read(length)
+            if decrypt_block > 0:
+                decrypt_cur = 0
+                while (decrypt_cur+decrypt_block) < length:
+                    dec_data = decrypt(data[decrypt_cur:decrypt_cur+decrypt_block])
+                    decrypt_cur += decrypt_block
+                    wf.write(dec_data)
+                if (length - decrypt_cur) > 0:
+                    dec_data = decrypt(data[decrypt_cur:])
+                    wf.write(dec_data)
             if align > 0 and length % align:
-                data += (align-(length % align))*b'\x00'
-            wf.write(data)
+                align_data = (align-(length % align))*b'\x00'
+                wf.write(align_data)
 
 
 def main():
+    # with open('prog_firehose_ddr.elf', 'rb') as rf:
+    #     a=rf.read()
+    # b = decrypt(a[:0x40000]) + decrypt(a[0x40000:0x80000]) + decrypt(a[0x80000:0xc0000]) + decrypt(a[0xc0000:])
+    # with open('dec.bin', 'wb') as f:
+    #     f.write(b)
+    # return
+
     if len(sys.argv) < 3:
         print(
             "Usage: ./op8t_ops_extract.py [Filename.ops] [Directory to extract files to]")
@@ -376,10 +392,15 @@ def main():
                     offset = int(item.attrib["FileOffsetInSrc"]) * pagesize
                     length = int(item.attrib["SizeInByteInSrc"])
                     print(f"Extracting {label} to {out_file_name}")
-                    if out_file_name.endswith(".xml"):
-                        extract_file(ops_filename, path, out_file_name, offset, length, 0)
+                    # hack for decrypt Sahara elf file
+                    if child.tag.upper() in ["SAHARA"]:
+                        decrypt_block = 0x40000
                     else:
-                        extract_file(ops_filename, path, out_file_name, offset, length)
+                        decrypt_block = 0
+                    if out_file_name.endswith(".xml"):
+                        extract_file(ops_filename, path, out_file_name, offset, length, align=0, decrypt_block=decrypt_block)
+                    else:
+                        extract_file(ops_filename, path, out_file_name, offset, length, align=0, decrypt_block=decrypt_block)
         elif "Program" in child.tag:
             if not os.path.exists(os.path.join(path, child.tag)):
                os.mkdir(os.path.join(path, child.tag))
