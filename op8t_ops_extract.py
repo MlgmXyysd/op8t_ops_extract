@@ -335,6 +335,8 @@ def extract_file(ops_filename, out_path, out_file_name, offset, length, align=0x
                 if (length - decrypt_cur) > 0:
                     dec_data = decrypt(data[decrypt_cur:])
                     wf.write(dec_data)
+            else:
+                wf.write(data)
             if align > 0 and length % align:
                 align_data = (align-(length % align))*b'\x00'
                 wf.write(align_data)
